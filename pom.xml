@@ -49,6 +49,11 @@
 			<artifactId>spring-cloud-stream-test-binder</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>telran.security</groupId>
+			<artifactId>request-blocker-api</artifactId>
+			<version>0.0.1</version>
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
@@ -78,5 +83,8 @@
 			</plugin>
 		</plugins>
 	</build>
+	<modules>
+		<module>scheduled-cleaner</module>
+	</modules>
 
 </project>
