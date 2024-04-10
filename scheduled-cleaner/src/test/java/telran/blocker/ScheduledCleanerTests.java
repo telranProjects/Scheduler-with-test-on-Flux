@@ -2,6 +2,7 @@ package telran.blocker;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -11,7 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 import telran.blocker.dto.IpData;
 import telran.blocker.model.IpDataDoc;
 import telran.blocker.repo.IpDataRepo;
@@ -26,7 +29,7 @@ class ScheduledCleanerTests {
 	long timeBorder;
 
 	@Value("${app.scheduled.cleaner.delay}")
-	long timeDelay;	
+	long timeDelay;
 
 	@SuppressWarnings("serial")
 	List<IpData> ipDataList = new ArrayList<>() {
@@ -67,32 +70,36 @@ class ScheduledCleanerTests {
 	};
 
 	List<IpDataDoc> listInRepo = null;
+	Integer size = null;
+	Long allTime = null;
+
+	@PostConstruct
+	void setup() {
+		size = ipDataList.size();
+		allTime = timeBorder + timeDelay;
+	}
 
 	@Test
-	void test() {
-		int size = ipDataList.size();
-		long allTime = timeBorder + timeDelay;
-		int i = 0;
-		while (i < 60) {
-			IpDataDoc ipDataDoc = getRandomIpData(size);
-			dataRepo.save(ipDataDoc);
-			listInRepo = dataRepo.findAll();
-			long currentTimeStamp = System.currentTimeMillis();
-			listInRepo.stream().forEach(l -> {
-				long tS = l.getTimestamp();
-				assertTrue(currentTimeStamp - tS < allTime);
-				log.debug("IP:{} TS: {}; ", l.getIP(), tS);
-			});
-			System.out.println(".");
+	void test() throws InterruptedException {
 
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				assertTrue(1 == 2);
-			}
-			i++;
-		}
+		Flux<Long> fluxInterval = Flux.interval(Duration.ofSeconds(1));
+		fluxInterval.parallel().subscribe(n -> doTest(n));
+		Thread.sleep(60000);
 
+	}
+
+	private void doTest(long n) {
+		IpDataDoc ipDataDoc = getRandomIpData(size);
+		dataRepo.save(ipDataDoc);
+
+		listInRepo = dataRepo.findAll();
+		long currentTimeStamp = System.currentTimeMillis();
+		listInRepo.stream().forEach(l -> {
+			long tS = l.getTimestamp();
+			assertTrue(currentTimeStamp - tS < allTime);
+			log.trace("IP:{} TS: {}; ", l.getIP(), tS);
+		});
+		System.out.printf("%s\n", n + 1);
 	}
 
 	private IpDataDoc getRandomIpData(int size) {
