@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import telran.blocker.dto.IpData;
 import telran.blocker.model.IpDataDoc;
 import telran.blocker.repo.IpDataRepo;
@@ -82,8 +83,12 @@ class ScheduledCleanerTests {
 	@Test
 	void test() throws InterruptedException {
 
-		Flux<Long> fluxInterval = Flux.interval(Duration.ofSeconds(1));
-		fluxInterval.parallel().subscribe(n -> doTest(n));
+		Flux<Long> fluxInterval_1 = Flux.interval(Duration.ofSeconds(1));
+	    Flux<Long> fluxInterval_2 = Flux.interval(Duration.ofSeconds(1));
+
+	    fluxInterval_1.parallel().runOn(Schedulers.parallel()).subscribe(n -> doTest(n));
+	    fluxInterval_2.parallel().runOn(Schedulers.parallel()).subscribe(n -> doTest(n));
+
 		Thread.sleep(60000);
 
 	}
