@@ -1,5 +1,7 @@
 package telran.blocker;
 
+import java.util.concurrent.CountDownLatch;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Duration;
@@ -31,6 +33,8 @@ class ScheduledCleanerTests {
 
 	@Value("${app.scheduled.cleaner.delay}")
 	long timeDelay;
+
+	private CountDownLatch latch;
 
 	@SuppressWarnings("serial")
 	List<IpData> ipDataList = new ArrayList<>() {
@@ -83,13 +87,22 @@ class ScheduledCleanerTests {
 	@Test
 	void test() throws InterruptedException {
 
+		latch = new CountDownLatch(60);
+
 		Flux<Long> fluxInterval_1 = Flux.interval(Duration.ofSeconds(1));
-	    Flux<Long> fluxInterval_2 = Flux.interval(Duration.ofSeconds(1));
+		Flux<Long> fluxInterval_2 = Flux.interval(Duration.ofSeconds(1));
 
-	    fluxInterval_1.parallel().runOn(Schedulers.parallel()).subscribe(n -> doTest(n));
-	    fluxInterval_2.parallel().runOn(Schedulers.parallel()).subscribe(n -> doTest(n));
+		fluxInterval_1.parallel().runOn(Schedulers.parallel()).subscribe(n -> {
+			doTest(n);
+			latch.countDown();
+		});
 
-		Thread.sleep(60000);
+		fluxInterval_2.parallel().runOn(Schedulers.parallel()).subscribe(n -> {
+			doTest(n);
+			latch.countDown();
+		});
+		
+		latch.await();
 
 	}
 
